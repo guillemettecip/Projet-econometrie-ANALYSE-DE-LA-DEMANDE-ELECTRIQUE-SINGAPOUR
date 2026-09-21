@@ -1,0 +1,782 @@
+---
+title: 'ANALYSE DE LA DEMANDE ÉLECTRIQUE : SINGAPOUR'
+author: "Guillemette Cipriano"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    code_folding: hide
+  pdf_document:
+    toc: true
+    toc_depth: '2'
+subtitle: "Étude Économétrique de la Prévision (2009-2025)"
+---
+
+
+<style>
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.7;
+  color: #334155;
+  background-color: #f8fafc;
+}
+
+h1, h2, h3 {
+  color: #1e293b;
+  font-weight: 700;
+  margin-top: 2em;
+}
+
+#TOC {
+  background-color: #ffffff; 
+  border: none;
+  border-left: 8px solid #1e293b; /* Bleu Ardoise très foncé */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+  padding: 30px;
+  margin-top: 30px;
+  border-radius: 0 12px 12px 0;
+}
+
+/* Titre principal "Table of Contents" */
+#TOC h2 {
+  color: #1e293b !important; /* Ardoise Profond */
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+#TOC a {
+  color: #1e3a8a !important; /* Bleu Nuit Profond */
+  font-size: 1.4rem !important; /* Écrit plus gros */
+  font-weight: 700;
+  line-height: 2; /* Espacement aéré */
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+
+#TOC a:hover {
+  color: #b45309 !important; 
+  padding-left: 10px; 
+  text-decoration: none;
+}
+
+
+.analysis-box {
+  background-color: #f1f5f9;
+  border-left: 8px solid #1e3a8a; /* Bleu nuit très épais */
+  padding: 25px;
+  margin: 30px 0;
+  border-radius: 10px;
+  box-shadow: 5px 5px 15px rgba(0,0,0,0.08);
+  color: #1e293b;
+}
+
+.analysis-title {
+  font-weight: 800;
+  color: #1e3a8a;
+  display: block;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+
+.interpretation-box {
+  background-color: #f0f7ff;
+  border-left: 6px solid #3b82f6;
+  padding: 25px;
+  margin: 30px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.interpretation-title {
+  font-weight: 800;
+  color: #b45309;
+  display: block;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+code { color: #eb5757; background: #f1f1f1; padding: 2px 4px; border-radius: 4px; }
+</style>
+
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+    
+    
+```{r}
+library(forecast)
+library(ggplot2)
+library(urca)
+library(zoo)
+library(lmtest)
+library(FinTS)
+library(TSA)
+library(tseries)
+```
+
+
+
+## Chargement et préparation des données
+
+
+Dans le cadre du Projet 1, les tests de racine unitaire ont permis d'identifier la nature du processus générateur de données (PGD). Plus précisément, l'application du test de Lee et Strazicich conclut à la présence d'un PGD de type DS (Difference Stationary). Ce test met également en évidence deux date de rupture structurelle survenue en septembre 2011 et en août 2019, lesquelles se caractérisent par une modification simultanée du niveau et de la tendance (pente) de la série temporelle.
+
+```{r}
+## Chargement et préparation des données
+
+data = read.csv("monthly_full_release_long_format(1).csv",sep = ";")
+data_filter = subset(data, Area == "Singapore")
+data_demand = subset(data_filter, Variable == "Demand")
+electricite12= ts(data_demand$Value, start = c(2009, 1), freq = 12)
+electricite_2=diff(electricite12,12)
+dX=diff(electricite_2)
+
+```
+
+
+
+### Chronogramme de la série 
+```{r}
+
+plot.ts(electricite12,
+        main = "Évolution de la demande d'électricité",
+        ylab = "Consommation (TWh)",
+        xlab = "Année",
+        col = "red",
+        lwd = 2,
+        las = 1)
+grid()
+abline(lm((electricite12 ~time(electricite12))))
+```
+
+
+
+## 1. Prévision sur la série issue du PGD stationnaire
+
+Le PGD ayant été identifié comme étant de type DS, il convient d'appliquer une différenciation d'ordre 1 afin de rendre la série temporelle stationnaire.
+
+```{r}
+plot(dX)
+```
+
+
+::: {.interpretation-box}
+
+
+Puisque les modèles de prévision exigent que la série temporelle soit stationnaire, nous devons la transformer. Nous appliquons par conséquent une différenciation d'ordre 1, soit ΔXt=Xt−Xt−1
+
+L'analyse graphique de la série différenciée confirme l'obtention d'un processus stationnaire. Ses fluctuations sont stables et centrées sur une constante nulle (E(Xt)≈0).
+
+:::
+
+
+## 1.1. Estimation du modèle
+
+Autocrrélation : ACF / PACF / eacf
+
+```{r}
+Acf(dX)
+pacf(dX)
+```
+
+
+::: {.interpretation-box}
+
+L'analyse des corrélogrammes permet d'orienter le choix de la structure du modèle. L'examen de la fonction d'autocorrélation (ACF) révèle des pics significatifs aux retards 1, 12 et 13. Parallèlement, la fonction d'autocorrélation partielle (PACF) affiche des autocorrélations significatives aux ordres 1, 2, 3, 5, 10, 11 et 12. 
+
+::: 
+
+
+
+Pour modéliser la structure de dépendance temporelle, trois types de processus sont envisageables :
+
+\begin{itemize}
+    \item \textbf{AR($p$)} :
+    \[ X_t = \phi_0 + \phi_1 X_{t-1} + \phi_2 X_{t-2} + \dots + \phi_p X_{t-p} + \varepsilon_t \]
+    
+    \item \textbf{MA($q$)} :
+    \[ X_t = \mu + \varepsilon_t + \theta_1 \varepsilon_{t-1} + \theta_2 \varepsilon_{t-2} + \dots + \theta_q \varepsilon_{t-q} \]
+    
+    \item \textbf{ARMA($p,q$)} :
+    \[ X_t = \phi_0 + \phi_1 X_{t-1} + \dots + \phi_p X_{t-p} + \varepsilon_t + \theta_1 \varepsilon_{t-1} + \dots + \theta_q \varepsilon_{t-q} \]
+\end{itemize}
+
+
+```{r}
+eacf(dX)
+```
+
+::: {.interpretation-box}
+
+L'analyse de la matrice EACF permet de déterminer les ordres optimaux du modèle en s'appuyant sur la règle du coin supérieur gauche. Le sommet du triangle formé par les coefficients statistiquement nuls se situant aux coordonnées p=6 et q=13, la spécification ARMA(6,13) est privilégiée pour l'étape d'estimation. 
+
+\textbf{Modèle ARMA(6,13)} :
+\[ X_t = \phi_0 + \sum_{i=1}^{6} \phi_i X_{t-i} + \varepsilon_t + \sum_{j=1}^{13} \theta_j \varepsilon_{t-j} \]
+
+:::
+
+
+
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,0,0,0,0,0,NA,0,0,0,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+
+
+Validation des coefficients du modèle ARMA(0,13)
+
+
+
+::: {.interpretation-box}
+
+$H_0$ : Le coefficient testé est nul.
+$H_a$ : Le coefficient testé est différent de zéro.
+
+En appliquant une méthode d'élimination pas-à-pas (détaillée en annexe), nous avons épuré le modèle initial pour aboutir à une spécification ARMA(0,13) restreinte. Celle-ci ne conserve que les variables pertinentes : Ma(1), MA(12) et MA(13).
+
+Toutes les p-values de ces coefficients sont en dessous du seuil de 5 % (0.05), l'hypothèse nulle (H0) est rejetée. Les coefficients de notre modèle final sont donc rigoureusement significatifs.
+
+:::
+
+
+
+## 1.2. Validation du modèle 
+
+Afin de valider définitivement la spécification retenue, il est impératif de s'assurer que le processus des résidus (εt) se comporte comme un bruit blanc. Cette étape de diagnostic nécessite la vérification rigoureuse de trois conditions fondamentales :
+
+- Une espérance mathématique nulle (E(εt)=0).
+
+- L'absence d'autocorrélation temporelle.
+
+- L'homoscédasticité, c'est-à-dire une variance constante au cours du temps.
+
+
+
+#### 1.2.1. Test de nullité de l'espérance (t-test)
+
+```{r}
+t.test(reg$res)
+```
+
+
+
+    
+
+::: {.interpretation-box}
+
+$$H_0 : \mathbb{E}[\varepsilon_t] = 0$$
+    
+$$H_a : \mathbb{E}[\varepsilon_t] \neq 0$$
+
+La probabilité critique (p-value) associée à ce test s'élève à 0.1552 Étant supérieure au seuil de significativité de 5 % (>0.05), nous acceptonsl'hypothèse nulle (H0). Par conséquent, la condition d'une espérance nulle des résidus est statistiquement validée.
+
+::: 
+
+#### 1.2.2. ACF / PACF : test Ljung-Box
+    
+Afin de vérifier rigoureusement l'absence d'autocorrélation, nous procédons préalablement à la standardisation des aléas du modèle.
+
+
+```{r}
+res=(reg$res-mean(reg$res))/sd(reg$res)
+acf(res, lag.max = 12)
+pacf(res, lag.max = 12)
+```
+
+::: {.interpretation-box}
+
+Graphiquement, l'ACF et la PACF ne montrent aucun signe d'autocorrélation des résidus. Pour corroborer ce diagnostic, nous appliquons le test de Ljung-Box.
+
+:::
+
+
+
+```{r}
+Box.test(res,lag=1,type="Ljung-Box")
+```
+```{r}
+Box.test(res,lag=12,type="Ljung-Box")
+```
+
+
+::: {.interpretation-box}
+
+Le diagnostic final repose sur le test statistique de Ljung-Box :
+
+$$H_0 : \rho_1 = \rho_2 = \dots = \rho_h = 0$$
+    
+$$H_a : \exists k \in \{1, \dots, h\} \mid \rho_k \neq 0$$
+
+Pour les retards 1 et 12, le test renvoie des p-values respectives de 0.4496 et 0.501. Étant donné qu'elles excèdent le seuil de 5%, H0 est conservée : l'hypothèse d'absence d'autocorrélation des résidus est validée.
+
+:::
+
+
+#### 1.2.3. Test d'hétéroscédasticité conditionnelle (Test ARCH)
+
+
+La dernière condition porte sur la constance de la variance des résidus.
+
+```{r}
+K<-12
+ temp<-rep(0,K)
+ for(i in 1:K){
+ temp[i]<-ArchTest(res, lag=i)$p.value
+ }
+temp
+```
+
+$$H_0 : \text{Homoscédasticité conditionnelle des aléas}$$
+$$H_a : \text{Hétéroscédasticité conditionnelle des aléas}$$
+
+::: {.interpretation-box}
+
+$$H_0 : \text{Homoscédasticité conditionnelle des aléas}$$
+$$H_a : \text{Hétéroscédasticité conditionnelle des aléas}$$
+
+Le test d'hétéroscédasticité conditionnelle d'Engle (ARCH-LM) met en évidence une dynamique de volatilité ambigüe au sein des résidus. En effet, au seuil usuel de 5%, les probabilités critiques observées aux retards 5 (p=0.0329) et 6 (p=0.0362) conduisent à rejeter l'hypothèse d'homoscédasticité, signalant la présence d'effets ARCH résiduels. Néanmoins, l'application d'un seuil de significativité plus exigeant de 1% permet de conserver l'hypothèse nulle d'une variance constante sur la totalité des ordres étudiés. Moyennant cette convention statistique – qui implique une plus grande tolérance à l'égard de l'instabilité de la variance – le processus des résidus peut être raisonnablement assimilé à un bruit blanc, autorisant ainsi la validation finale du modèle.
+j'ai également testé sur un ARMA(7,12) mais je trouve également des clusters de volatilités donc j'ai décidé de poursuivre mon projet sur ce modèle ARMA(6,13)
+
+
+:::
+
+#### 1.2.4. Test de normalités des aléas (Test Jacques Bera)
+
+```{r}
+jarque.bera.test(reg$res)
+```
+
+
+::: {.interpretation-box}
+
+
+$$H_0 : \varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2)$$
+$$H_a : \varepsilon \nsim \mathcal{N}(0, \sigma_\varepsilon^2)$$
+
+La probabilité critique associée à ce test est asymptotiquement nulle (p-value = 4.219e-14 ). Étant très largement inférieure au seuil de 5%, nous rejetons formellement l'hypothèse nulle (H0). Les résidus ne sont donc pas distribués selon une loi normale. Sur le plan opérationnel, cette absence de normalité stricte implique que les intervalles de confiance construits classiquement autour de nos prévisions risquent d'être biaisés et perdront en fiabilité.
+
+:::
+
+```{r}
+
+prev <- forecast(reg, h = 12)
+pprev <- forecast(reg,level = 0.95)
+plot(prev)
+```
+
+## 2. Prévision sur la série désaisonnalisée (ARIMA)
+
+
+::: {.interpretation-box}
+
+
+À l'issue de cette première modélisation portant sur la série stationnaire, notre analyse s'oriente à présent vers la prévision de la série simplement désaisonnalisée (demande_12). Afin d'assurer une parfaite cohérence méthodologique, nous conservons la structure autorégressive et moyenne mobile préalablement identifiée. Le modèle ARMA(5,13) est ainsi transposé en un modèle ARIMA(5,1,13) par l'introduction d'un ordre d'intégration d=1, permettant de restituer la différenciation initiale.
+
+
+:::
+
+
+## 2.1. estimation du modèle 
+
+```{r}
+reg_1<-Arima(electricite_2,order=c(6,1,13),include.mean=F,fixed=c(0,0,0,0,0,0,NA,0,0,0,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg_1)
+```
+
+::: {.interpretation-box}
+
+L'estimation de cette nouvelle spécification sur la série différenciée s'avère concluante. L'analyse des résultats montre en effet que l'ensemble des coefficients conservés dans l'équation sont statistiquement significatifs, leurs p-values étant toutes strictement inférieures au seuil de 5%.
+
+:::
+
+## 2.2. validation des résidus 
+
+
+#### 2.2.1. Test de l’Espérance Nulle (t-test)
+
+
+
+```{r}
+t.test(reg_1$res)
+```
+
+
+::: {.interpretation-box}
+
+$$H_0 : \mathbb{E}[\varepsilon_t] = 0$$
+$$H_a : \mathbb{E}[\varepsilon_t] \neq 0$$
+
+La p-value obtenue est de 0.1553. Cette valeur étant supérieure au seuil de 5%, nous acceptons l’hypothèse nulle (𝐻0). L’espérance des résidus est donc statistiquement nulle. 
+
+:::
+
+#### 2.2.2. Test d’Autocorrélation (Ljung-Box)
+
+```{r}
+res=(reg_1$res-mean(reg_1$res))/sd(reg_1$res)
+Acf(res)
+Pacf(res)
+```
+```{r}
+Box.test(res,lag=1,type="Ljung-Box")
+```
+
+```{r}
+Box.test(res,lag=12,type="Ljung-Box")
+```
+
+
+::: {.interpretation-box}
+
+$$H_0 : \rho_1 = \rho_2 = \dots = \rho_h = 0$$
+    
+$$H_a : \exists k \in \{1, \dots, h\} \mid \rho_k \neq 0$$
+
+La p-value obtenue est de 0.4528 et de 0,3297. Ces valeurs étant supérieures au seuil de 5%, nous acceptons l’hypothèse nulle (𝐻0).Il n’y a pas d’autocorrélation significative des résidus.
+
+:::
+
+#### 2.2.3. Test d’Hétéroscédasticité (ARCH)
+
+```{r}
+K<-12
+ temp<-rep(0,K)
+ for(i in 1:K){
+ temp[i]<-ArchTest(res, lag=i)$p.value
+ }
+temp
+```
+
+
+
+::: {.interpretation-box}
+
+
+$$H_0 : \text{Homoscédasticité conditionnelle des aléas}$$
+$$H_a : \text{Hétéroscédasticité conditionnelle des aléas}$$
+
+Le diagnostic de la variance des résidus via le test ARCH-LM d'Engle met en évidence une hétéroscédasticité conditionnelle profonde. Les p-value critiques dès le premier retard confirme la persistance de phénomènes de "clusters de volatilité". Cette structure de dépendance suggère que la variance des erreurs n'est pas constante dans le temps, un fait que la spécification ARIMA ne parvient pas à neutraliser. Par conséquent, les résidus ne peuvent être assimilés à un bruit blanc fort. Cette défaillance statistique indique qu'une part de l'information contenue dans la volatilité du PIB échappe à la modélisation linéaire classique, limitant ainsi la fiabilité des intervalles de confiance associés aux prévisions. 
+
+:::
+
+#### 2.2.4 Test de Normalité (Jarque-Bera)
+
+```{r}
+jarque.bera.test(reg_1$res)
+```
+
+
+::: {.interpretation-box}
+
+$$H_0 : \varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2)$$
+$$H_a : \varepsilon \nsim \mathcal{N}(0, \sigma_\varepsilon^2)$$
+
+Le test de Jarque-Bera affiche une p-value largement inférieure à 0.05 (P-VALUE=1.865e-14), conduisant au rejet de l'hypothèse nulle (H0) de normalité des résidus. Cette absence de distribution normale suggère que les erreurs du modèle présentent une asymétrie ou un aplatissement (kurtosis) incompatible avec une loi normale. Par conséquent, bien que les coefficients du modèle ARIMA restent sans biais, la fiabilité statistique des intervalles de prévision est altérée.
+
+:::
+
+
+```{r}
+prev<-forecast(reg_1,level=0.95)
+plot(prev,PI=FALSE, main="Prévision avec Modèle ARIMA(6,1,13) sur série désaisonnalisée")
+
+```
+
+## 3.Prévision sur la série initiale (SARIMA)
+
+####3.1. estimation du modèle 
+
+La phase finale de notre étude consiste à effectuer la prévision sur la série brute initiale (electricite). Afin de prendre en compte la dynamique saisonnière complète, nous étendons la structure de notre modèle précédent en y intégrant des composantes saisonnières explicites. Nous passons ainsi d'une spécification ARIMA à un modèle SARIMA$(6,1,13)(1,1,1)_{12}$, permettant de capturer simultanément les dépendances de court terme et les cycles annuels.
+
+```{r}
+Acf(electricite12,lag.max=44) 
+```
+
+::: {.interpretation-box}
+
+L'analyse de la fonction d'autocorrélation de la série initiale justifie le passage à un ordre D=1. On observe en effet que les autocorrélations aux ordres saisonniers (multiples de 12) sont très élevées et ne convergent que très progressivement vers zéro. Cette lenteur de décroissance est le signe typique d'une composante saisonnière stochastique qu'il convient de traiter par une différenciation d'ordre 1.
+
+:::
+
+```{r}
+s=12
+reg_2 <- Arima(electricite12, 
+              order = c(6, 1, 13), 
+              seasonal = list(order = c(1, 1, 1), period = 12),
+              fixed = c(0,0,0,0,0,0, NA,0,0,0,0,0,0,0,0,0,0,NA,NA, NA,NA))
+coeftest(reg_2)
+```
+::: {.interpretation-box}
+
+Tous les coefficients affichent une p-value inférieure à 5%, ainsi ils sont tous significatifs. 
+
+:::
+
+## 3.2. validation du modèle 
+
+#### 3.2.1. Test de l’Espérance Nulle (t-test)
+
+
+```{r}
+t.test(reg_2$res)
+```
+
+::: {.interpretation-box}
+
+$$H_0 : \mathbb{E}[\varepsilon_t] = 0$$
+    
+$$H_a : \mathbb{E}[\varepsilon_t] \neq 0$$
+
+La p-value obtenue est de 0.1372. Cette valeur étant supérieure au seuil de 5%, nous acceptons l’hypothèse nulle (𝐻0). L’espérance des résidus est donc statistiquement nulle. 
+
+:::
+
+
+#### 3.2.2. ACF / PACF : test Ljung-Box
+
+
+```{r}
+res=(reg_2$res-mean(reg_2$res))/sd(reg_2$res)
+Acf(res)
+```
+```{r}
+pacf(res)
+```
+
+```{r}
+Box.test(res,lag=1,type="Ljung-Box")
+```
+
+```{r}
+Box.test(res,lag=12,type="Ljung-Box")
+```
+::: {.interpretation-box}
+
+L'analyse repose sur le test statistique de Ljung-Box :
+
+$$H_0 : \rho_1 = \rho_2 = \dots = \rho_h = 0$$
+    
+$$H_a : \exists k \in \{1, \dots, h\} \mid \rho_k \neq 0$$
+Pour les retards 1 et 12, le test renvoie des p-values respectives de 0.4757 et 0.501. Étant donné qu'elles excèdent le seuil de 5%, H0 est conservée : l'hypothèse d'absence d'autocorrélation des résidus est validée.
+
+::: 
+
+
+#### 3.2.3. Test d’Hétéroscédasticité (ARCH)
+
+
+```{r}
+K<-12
+ temp<-rep(0,K)
+ for(i in 1:K){
+ temp[i]<-ArchTest(res, lag=i)$p.value
+ }
+temp
+```
+
+::: {.interpretation-box}
+
+$$H_0 : \text{Homoscédasticité conditionnelle des aléas}$$
+$$H_a : \text{Hétéroscédasticité conditionnelle des aléas}$$
+
+Le diagnostic de la variance des résidus via le test ARCH-LM d'Engle met en évidence une hétéroscédasticité conditionnelle profonde. Les p-value critiques dès le premier retard confirme la persistance de phénomènes de "clusters de volatilité". Cette structure de dépendance suggère que la variance des erreurs n'est pas constante dans le temps, un fait que la spécification ARIMA ne parvient pas à neutraliser. Par conséquent, les résidus ne peuvent être assimilés à un bruit blanc fort. Cette défaillance statistique indique qu'une part de l'information contenue dans la volatilité du PIB échappe à la modélisation linéaire classique, limitant ainsi la fiabilité des intervalles de confiance associés aux prévisions. 
+
+:::
+
+
+#### 3.2.4. Test de Normalité (Jarque-Bera)
+
+```{r}
+jarque.bera.test(reg_2$res)
+```
+::: {.interpretation-box}
+
+
+$$H_0 : \varepsilon \sim \mathcal{N}(0, \sigma_\varepsilon^2)$$
+$$H_a : \varepsilon \nsim \mathcal{N}(0, \sigma_\varepsilon^2)$$
+
+Le test de Jarque-Bera affiche une p-value largement inférieure à 0.05 (P-VALUE=2,2e-16), conduisant au rejet de l'hypothèse nulle (H0) de normalité des résidus. Cette absence de distribution normale suggère que les erreurs du modèle présentent une asymétrie incompatible avec une loi normale. Par conséquent,la fiabilité statistique des intervalles de prévision est altérée.
+
+:::
+
+
+```{r}
+prev<-forecast(reg_2,level=0.95)
+plot(prev,PI=FALSE, main="Prévision Finale avec SARIMA")
+```
+
+## CONCLUSION : 
+
+::: {.interpretation-box}
+
+L'objectif de cette étude était de modéliser et de prévoir la demande électrique singapourienne. Le processus générateur de données ayant été identifié comme Difference Stationary (DS), la série a fait l'objet d'un filtrage régulier et saisonnier. L'estimation itérative a conduit à retenir une spécification parcimonieuse SARIMA$(6,1,13)(1,1,1)_{12}$.
+
+Bien que ce modèle neutralise avec succès l'autocorrélation des innovations, les tests de robustesse soulignent deux défaillances statistiques majeures : le rejet de l'hypothèse de normalité (Jarque-Bera) et la présence d'effets ARCH persistants. Cette hétéroscédasticité conditionnelle traduit une incapacité du cadre ARIMA classique à modéliser les pics de volatilité extrêmes.
+
+Par conséquent, si ce modèle fournit une trajectoire de prévision ponctuelle robuste, confirmant une croissance tendancielle rythmée par de forts cycles saisonniers , ses intervalles de confiance s'en trouvent fragilisés.L'incertitude entourant les prévisions reste sous-estimée en raison de la nature non-gaussienne et volatile des chocs (climatiques et économiques) impactant la série. Elle nécéssiterait d'être modélisée via une approche de type GARCH. 
+
+::: 
+
+## ANNEXES : 
+```{r}
+reg<-Arima(dX,order=c(6,0,13))
+coeftest(reg)
+```
+
+La p-value associée à la constante du modèle (β0) s'élevant à 0.3738 (soit une valeur supérieure au seuil usuel de 5%), ce terme s'avère statistiquement non significatif. Par conséquent, il sera exclu lors de la prochaine étape d'estimation.
+
+
+```{r}
+reg <- Arima(dX, order=c(6,0,13), include.mean=F, fixed=rep(NA, 19))
+coeftest(reg)
+```
+
+Le coefficient associé à ma11 présente la p-value la plus élevée du test (0.64417). Il est retiré.
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+Le coefficient associé à ma5 présente la p-value la plus élevée du test ( 0.94661). Nous le retirons.
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,0,NA,NA,NA,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+
+
+Le coefficient associé à ma7 présente la p-value la plus élevée du test (0,9790559). Nous le retirons.
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,0,NA,0,NA,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+
+Le coefficient associé à ma3 présente la p-value la plus élevée du test (0.58612). Nous le retirons.
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(NA,NA,NA,NA,NA,NA,NA,NA,0,NA,0,NA,0,NA,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+
+Le coefficient associé à ma6 présente la p-value la plus élevée du test (0.91333). Nous le retirons.
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(NA,NA,NA,NA,NA,NA,NA,NA,0,NA,0,0,0,NA,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+Le coefficient associé à ma8 présente la p-value la plus élevée du test (0.9507). Nous le retirons.
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(NA,NA,NA,NA,NA,NA,NA,NA,0,NA,0,0,0,0,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+
+Le coefficient associé à ar1 présente la p-value la plus élevée du test (  0.82340  ).  Nous le retirons.
+
+
+```{r}
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,NA,NA,NA,NA,NA,NA,0,NA,0,0,0,0,NA,NA,0,NA,NA))
+coeftest(reg)
+```
+Le coefficient associé à ma9 présente la p-value la plus élevée du test ( 0.68215 ).  Nous le retirons.
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,NA,NA,NA,NA,NA,NA,0,NA,0,0,0,0,0,NA,0,NA,NA))
+coeftest(reg)
+```
+
+Le coefficient associé à ma2 présente la p-value la plus élevée du test (0.61723).  Nous le retirons.
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,NA,NA,NA,NA,NA,0,0,NA,0,0,0,0,0,NA,0,NA,NA))
+coeftest(reg)
+```
+
+Le coefficient associé à ar6 présente la p-value la plus élevée du test ( 0.44632 ).  Nous le retirons.
+
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,NA,NA,NA,0,NA,0,0,NA,0,0,0,0,0,NA,0,NA,NA))
+coeftest(reg)
+
+```
+Le coefficient associé à ma10 présente la p-value la plus élevée du test (0.25763).  Nous le retirons.
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,NA,NA,NA,0,NA,0,0,NA,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+
+Le coefficient associé à ar3 présente la p-value la plus élevée du test (0.20672).  Nous le retirons.
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,0,NA,NA,0,NA,0,0,NA,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+
+Le coefficient associé à ma4 présente la p-value la plus élevée du test (0.19749).  Nous le retirons.
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,0,NA,NA,0,NA,0,0,0,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+Le coefficient associé à ar4 présente la p-value la plus élevée du test (0.1805).  Nous le retirons
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,NA,0,0,NA,0,NA,0,0,0,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+
+Le coefficient associé à ar2 présente la p-value la plus élevée du test (0.2311).  Nous le retirons
+
+
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,0,0,0,NA,0,NA,0,0,0,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+Le coefficient associé à ar5 présente la p-value la plus élevée du test (0.1441 ).  Nous le retirons
+
+```{r}
+
+reg<-Arima(dX,order=c(6,0,13),include.mean=F,fixed=c(0,0,0,0,0,0,NA,0,0,0,0,0,0,0,0,0,0,NA,NA))
+coeftest(reg)
+
+```
+
+Tous les coefficients sont significatifs car leur p-value est inférieur à 5%. 

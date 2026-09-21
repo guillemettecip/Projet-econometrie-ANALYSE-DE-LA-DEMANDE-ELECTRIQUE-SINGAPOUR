@@ -1,0 +1,681 @@
+---
+title: 'ANALYSE DE LA DEMANDE ÉLECTRIQUE : SINGAPOUR'
+author: "Guillemette Cipriano"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    theme: flatly
+    highlight: tango
+    toc: true
+    toc_depth: 2
+    toc_float: false
+    code_folding: hide
+  pdf_document:
+    toc: true
+    toc_depth: '2'
+subtitle: "Étude Économétrique de la Stationnarité (2009-2025)"
+---
+
+<style>
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.7;
+  color: #334155;
+  background-color: #f8fafc;
+}
+
+h1, h2, h3 {
+  color: #1e293b;
+  font-weight: 700;
+  margin-top: 2em;
+}
+
+#TOC {
+  background-color: #ffffff; 
+  border: none;
+  border-left: 8px solid #1e293b; /* Bleu Ardoise très foncé */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+  padding: 30px;
+  margin-top: 30px;
+  border-radius: 0 12px 12px 0;
+}
+
+/* Titre principal "Table of Contents" */
+#TOC h2 {
+  color: #1e293b !important; /* Ardoise Profond */
+  font-size: 1.3rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 2px solid #f1f5f9;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+#TOC a {
+  color: #1e3a8a !important; /* Bleu Nuit Profond */
+  font-size: 1.4rem !important; /* Écrit plus gros */
+  font-weight: 700;
+  line-height: 2; /* Espacement aéré */
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+
+#TOC a:hover {
+  color: #b45309 !important; 
+  padding-left: 10px; 
+  text-decoration: none;
+}
+
+
+.analysis-box {
+  background-color: #f1f5f9;
+  border-left: 8px solid #1e3a8a; /* Bleu nuit très épais */
+  padding: 25px;
+  margin: 30px 0;
+  border-radius: 10px;
+  box-shadow: 5px 5px 15px rgba(0,0,0,0.08);
+  color: #1e293b;
+}
+
+.analysis-title {
+  font-weight: 800;
+  color: #1e3a8a;
+  display: block;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+
+.interpretation-box {
+  background-color: #f0f7ff;
+  border-left: 6px solid #3b82f6;
+  padding: 25px;
+  margin: 30px 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.interpretation-title {
+  font-weight: 800;
+  color: #b45309;
+  display: block;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  font-size: 1rem;
+  letter-spacing: 1px;
+}
+
+code { color: #eb5757; background: #f1f1f1; padding: 2px 4px; border-radius: 4px; }
+</style>
+
+---
+
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE,message = FALSE,  warning = FALSE)
+
+library(foreach)
+library(doParallel)
+cl <- makeCluster(detectCores() - 1)
+registerDoParallel(cl)
+```
+
+
+### *INTRODUCTION* :
+
+D’un port colonial pauvre en ressources naturelles à l’un des pôles économiques les plus avancés au monde, Singapour illustre une trajectoire de développement exceptionnelle dont la demande d’électricité constitue un indicateur central.
+
+Depuis son indépendance en 1965, Singapour a suivi une trajectoire de croissance rapide et soutenue, fondée sur une stratégie d’industrialisation orientée vers l’exportation, l’attraction des investissements directs étrangers et le développement d’infrastructures urbaines et productives de haute qualité, entraînant une augmentation structurelle et continue de la demande d’électricité. Cette dynamique de long terme est indissociable des contraintes climatiques propres à la zone équatoriale, caractérisée par des températures élevées et faiblement variables tout au long de l’année — en moyenne comprises entre 26 °C et 32 °C — ainsi que par un taux d’humidité élevé, souvent supérieur à 80 %, générant une dépendance structurelle à la climatisation dans les secteurs résidentiel, tertiaire et industriel. Le refroidissement des bâtiments représente ainsi une part substantielle de la consommation électrique, estimée entre 30 % et 40 % des usages urbains, conférant à la demande d’électricité un caractère relativement rigide et peu sensible aux variations saisonnières observées dans les économies tempérées. À partir des années 2000, la transition vers une économie majoritairement tertiaire et à forte intensité technologique, marquée par l’essor des services financiers, de la logistique internationale, du tourisme et plus récemment des infrastructures numériques et des data centers, a renforcé cette dépendance à une alimentation électrique continue et stable, ces activités étant particulièrement sensibles aux contraintes thermiques et aux exigences de continuité de service. Sur le plan quantitatif, la consommation d’électricité est passée d’environ 28 000 GWh en 2000 à plus de 56 000 GWh en 2023, traduisant un doublement en un peu plus de deux décennies, malgré la survenue de chocs conjoncturels majeurs. En tant qu’économie extrêmement ouverte, dont le commerce extérieur représente plus de trois fois le PIB, Singapour est particulièrement exposée aux crises économiques, sanitaires et géopolitiques, ce qui renforce l’intérêt analytique de l’étude de sa demande électrique. La crise financière asiatique de 1997, la crise financière mondiale de 2008–2009 et plus récemment la pandémie de Covid-19 en 2020 ont temporairement affecté l’activité industrielle, les échanges internationaux et le tourisme, induisant des ralentissements conjoncturels de la demande d’électricité, rapidement compensés par des phases de reprise, ce qui souligne la résilience structurelle du système économique et énergétique singapourien. La crise sanitaire a en outre entraîné une recomposition sectorielle de la consommation électrique, marquée par une hausse des usages résidentiels liée au télétravail et aux restrictions de mobilité, illustrant la capacité de la demande à s’ajuster sans contraction durable. Par ailleurs, les tensions géopolitiques récentes, en particulier la guerre en Ukraine depuis 2022, ont mis en évidence la vulnérabilité énergétique de Singapour, dont plus de 95 % de l’électricité est produite à partir de gaz naturel importé, rendant le pays sensible à la volatilité des prix de l’énergie sur les marchés internationaux. Si ces chocs n’ont pas remis en cause la continuité de l’approvisionnement électrique, ils ont influencé indirectement la demande à travers le canal des prix, des anticipations et des incitations à l’efficacité énergétique. Enfin, le changement climatique constitue un facteur explicatif supplémentaire de la dynamique future de la demande d’électricité, dans la mesure où l’élévation tendancielle des températures moyennes et l’augmentation de la fréquence des épisodes de chaleur extrême sont susceptibles d’accroître les besoins de refroidissement à court et moyen terme. L’interaction entre croissance économique de long terme, contraintes climatiques structurelles et exposition aux chocs exogènes fait ainsi de Singapour un cas d’étude particulièrement pertinent pour la réalisation d’une prévision de la demande d’électricité à un horizon de six mois, offrant un cadre analytique riche pour l’identification et la modélisation des déterminants de la consommation énergétique à court terme.
+
+Afin d’appréhender de manière rigoureuse la dynamique de la demande d’électricité à Singapour et d’identifier ses propriétés statistiques fondamentales, il est nécessaire d’adopter une démarche méthodologique structurée et progressive. Cette analyse s’articulera en quatre étapes complémentaires, chacune visant à mettre en évidence des aspects spécifiques de la série et à préparer son traitement statistique ultérieur. Dans un premier temps, la construction d’un **chronogramme**permettra de visualiser l’évolution temporelle de la demande, d’identifier les tendances générales et de détecter d’éventuelles fluctuations atypiques liées à des chocs économiques, sanitaires ou géopolitiques. La deuxième étape consistera en une **analyse visuelle et une décomposition de la série**, visant à distinguer les composantes de tendance, saisonnières et irrégulières, et à éclairer la structure sous-jacente du processus générateur de la demande. La troisième étape portera sur **l’analyse de la stationnarité du PGD**, afin de déterminer si la série présente une stationnarité intrinsèque, ou si elle comporte des tendances déterministes ou stochastiques, information indispensable pour toute modélisation ultérieure. Enfin, la quatrième étape consistera, le cas échéant, en une **stationnarisation du PGD**, garantissant que la série soit adaptée aux traitements statistiques requis pour une analyse robuste. Cette approche méthodologique progressive permet ainsi de combiner observation descriptive, analyse structurelle et rigueur statistique, fournissant un cadre solide pour l’étude de la demande d’électricité dans un contexte complexe et exposé aux chocs exogènes.
+
+## 1) Chargement et filtrage des données
+
+```{r}
+library(forecast)
+library(lmtest)
+library(urca)
+
+```
+
+L'objectif est d'analyser la demande d'électricité à Singapour entre 2009 et 2025. Le jeu de données initial étant multidimensionnel (incluant notamment les émissions de CO2 et d'autres indicateurs environnementaux), une étape de filtrage est nécessaire pour isoler la variable d'intérêt : la demande d'électricité à Singapour ('Demand').
+
+```{r}
+data = read.csv("data_projet.csv")
+
+data1=subset(data, Area=='Singapore')
+electricitydemand= subset(data, Area == 'Singapore' & Category == 'Electricity demand')
+
+```
+
+Transformation en série temporelle (ts). Les données commencent en 2009 et la fréquence est de 12 car c'est mensuel.
+
+```{r}
+electricite_ts= ts(electricitydemand$Value, start=c(2009, 1), frequency=12)
+```
+
+## 2) Analyse des donnée et Décomposition de la Séries
+
+Visualisation de la demande d'éléctricité à singapour entre 2009 et 2025 :
+
+```{r}
+plot(electricite_ts , main="Demande d'électricité à Singapour (2009-2025) (TWh)", 
+     ylab="TWh", xlab="Années", 
+     col="#2c3e50", lwd=2, bty="l")
+grid(nx = NULL, ny = NULL, lty = 2, col = "gray", lwd = 1)
+abline(v = 2020, col = "#e74c3c", lty = 3, lwd = 2) 
+
+```
+
+::: {.analysis-box}
+
+L'examen du chronogramme met en évidence trois faits stylisés majeurs :
+
+1.  Une Tendance Déterministe Haussière et son Accélération :
+La demande d’électricité affiche une croissance soutenue, passant de 3,04 TWh en 2009 à plus de 5,30 TWh en 2025. Cette trajectoire ascendante indique une non-stationnarité en moyenne. La série ne fluctue pas autour d'un niveau constant, ce qui suggère un processus de type TS (Trend Stationary) où la croissance est pilotée par le temps.
+
+Contexte de départ (2009) : Le point initial de la série correspond à la phase de reprise faisant suite à la crise financière mondiale de 2008-2009, marquant le début d'un cycle de croissance de long terme.
+
+Explosion de la demande (Post-2021) : On observe une accélération de la pente après 2021. Cette "explosion" reflète le dynamisme de la cité-État, notamment l'expansion des services financiers, de la logistique, et surtout l'émergence massive des centres de données (data centers) et infrastructures numériques, extrêmement énergivores.
+
+2.  Ruptures Structurelles et Anomalies Conjoncturelles
+
+Au-delà de la tendance, la série est jalonnée par des chocs exogènes qui perturbent momentanément le processus :
+
+-   Le Choc Majeur de 2020 : L'année 2020 présente un creux atypique et brutal. Ce point de rupture correspond à la crise sanitaire mondiale et aux mesures de confinement ("Circuit Breaker" à Singapour), ayant entraîné un ralentissement forcé des activités industrielles et commerciales.
+
+-   Sensibilité Géopolitique (2022) : Une instabilité est perceptible en 2022, liée aux tensions internationales (guerre en Ukraine) qui ont affecté les prix de l'énergie et, par extension, la demande via le canal des anticipations économiques.
+
+-   Creux Saisonniers Systématiques : Il convient de noter les chutes récurrentes de la demande chaque mois de février. Ce creux, bien que saisonnier, est structurellement lié au calendrier (mois court) et au ralentissement économique majeur durant le Nouvel An Lunaire à Singapour.
+
+:::
+
+Pour choisir le modèle, nous observons l'évolution de la variance (l'écart entre les pics et les creux) :
+
+::: {.analysis-box}
+
+Observation : Sur le chronogramme de Singapour, on remarque que les oscillations saisonnières deviennent plus grandes à mesure que la consommation globale augmente.On utlise donc un schéma de décomposition multiplicatif.
+
+:::
+
+```{r}
+decomp_electricite_ts  <- decompose(electricite_ts , type = "multiplicative", filter= NULL)
+plot(decomp_electricite_ts)
+```
+
+::: {.analysis-box}
+
+Décision : Lorsque l'amplitude de la saisonnalité est proportionnelle au niveau de la série, le modèle multiplicatif est le plus approprié. Le modèle additif supposerait que l'écart reste constant, ce qui n'est pas le cas ici.
+
+L'analyse des indices saisonniers confirme que la demande d'électricité à Singapour est soumise à une cyclicité annuelle rigoureuse. Le mois de février marque le point bas structurel de la série avec un indice de 0,904, soit une chute de la consommation de 9,6% par rapport à la tendance de long terme. Ce recul significatif s'explique par la combinaison d'un mois calendaire plus court et de la célébration du Nouvel An Lunaire, période de ralentissement industriel et commercial majeur à Singapour. À l'inverse, le profil de consommation s'élève dès le second trimestre pour atteindre son maximum en mai (indice de 1,042, soit +4,2%). Ce pic correspond statistiquement aux températures les plus élevées relevées dans la ville (souvent supérieures à 32° C), ce qui déclenche une utilisation intensive des systèmes de refroidissement. On observe une persistance de cette surcharge électrique en juillet (indice de 1,034, soit +3,4%). Entre le point haut de mai et le point bas de février, on note un différentiel de consommation de près de 14%, soulignant l'importance de la saisonnalité dans la gestion du réseau électrique singapourien.
+
+:::
+
+
+Analyse de la saisonnalité mensuelle (Monthplot et Boxplot)
+
+Nous étudions ici quels mois pèsent le plus sur le réseau électrique et où se situent les plus fortes incertitudes (variance).
+
+```{r}
+# Boxplot de la demande d'électricité par mois
+boxplot(electricite_ts~ cycle(electricite_ts), 
+        main="Variabilité intra-mensuelle et écart à la moyenne globale", 
+        ylab="TWh", 
+        xlab="Mois",
+        col="#3498db",
+        border="#2c3e50",
+        names=c("Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"))
+abline(h = mean(electricite_ts), col = "red", lty = 2, lwd = 2)
+legend("topleft", legend="Moyenne globale", col="red", lty=2, lwd=2, bty="n", cex=0.8)
+```
+
+::: {.analysis-box}
+
+1. Intensités (Pics) : Le mois de mai constitue le pic annuel (4,49 TWh), suivi de près par juillet. Cette surconsommation est structurelle : elle correspond aux pics de chaleur pré-mousson à Singapour, provoquant un usage intensif de la climatisation (composante de refroidissement).
+
+2.Creux de février : Le mois de février marque le point bas structurel de la série. Ce recul significatif s'explique par la combinaison d'un mois calendaire plus court et de la célébration du Nouvel An Lunaire, période de ralentissement industriel et commercial majeur à Singapour.
+
+:::
+
+```{r}
+monthplot(electricite_ts, main="Monthplot : Évolution et Volatilité par mois (2009-2025)", 
+          ylab="TWh", xlab="Mois", col="blue", lwd=2)
+```
+
+::: {.analysis-box}
+
+Le graphique monthplot permet de décomposer la série temporelle en sous-séries mensuelles. Cette visualisation approfondie permet de dégager deux  enseignements majeurs :
+
+- Confirmation de la tendance déterministe (Pentes verticales) : Pour chaque mois de l'année, on observe une trajectoire ascendante quasi linéaire. Cela démontre que la croissance de la demande d'électricité à Singapour ne résulte pas d'un choc conjoncturel isolé, mais d'une tendance qui affecte l'ensemble de l'année.
+
+- Hiérarchie saisonnière et stabilité du cycle (Moyennes horizontales) : Les segments horizontaux révèlent que les mois de mai et juillet constituent les pics de charge structurels, portés par les besoins de refroidissement lors des pics de chaleur. À l'inverse, février reste systématiquement le point bas du cycle en raison du ralentissement économique lié au Nouvel An Lunaire.
+
+:::
+
+### Retrait de la saisonnalité
+
+```{r}
+electricite_ts12=diff(electricite_ts,12)   #electircite_ts summary(ur.df(electircite_ts, type="trend", lags=0))
+plot(electricite_ts12)
+```
+
+## 3) Test de stationnariré (test Dick et Fuller)
+
+Nous cherchons à déterminer si le Processus Générateur de Données (PGD) est stationnaire, TS (Trend Stationary) ou DS (Difference Stationary).
+
+## 3.1) Test de spécification Trend
+
+On commence par le test DF qui permet de tester la présence d'une racine unitaire. 
+Le processus ne peut pas être TS. Il reste à savoir si le processus est DS ou stationnaire, pour cela regardons la spécification drift.
+
+
+## 3.2) Test de spécification Drift
+
+```{r}
+summary(ur.df(electricite_ts12, type="drift", lags=0))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{equation}
+\Delta X_t = (\rho - 1)X_{t-1} + \beta_0 + \epsilon_t
+\end{equation}
+
+\begin{cases} 
+H_0 : \beta_0 = 0 \\ 
+H_a : \beta_0 \neq 0 
+\end{cases}
+
+La pvalue associée à β0 se situe à l'intersection de la ligne "(Intercept)" et de la colonne "Pr(\>\|t\|)" dans la sortie R.
+Ici, la p-value est de 0.000187, étant inférieure au seuil critique de 5 %, nous rejetons l'hypothèse nulle, confirmant ainsi que β0 est significatif pour le modèle.
+Dès lors, nous procédons au test de la racine unitaire sous les hypothèses : 
+
+\begin{cases} 
+H_0 : \rho - 1 = 0 \\ 
+H_a : |\rho| < 1 
+\end{cases} 
+
+La statistique t calculée, s'élevant à -7.0141, est nettement inférieure à la valeur critique au seuil 5% de -2,88 (extraite de la table à l'intersection de la ligne tau2 et de la colonne 5 %). Ce résultat nous conduit à rejeter l'hypothèse nulle H0, ce qui permet d'écarter la spécification de type DS au profit d'un PGD stationnaire.
+
+:::
+
+## 4) Test d'autocorrélation des aléas
+
+::: {.interpretation-box}
+
+La validité des conclusions du test de Dickey-Fuller repose sur l'hypothèse fondamentale d'absence d'autocorrélation des résidus (\epsilon_t\). Afin de s'assurer que le processus résiduel se comporte comme un bruit blanc, nous procédons à l'examen des fonctions d'autocorrélation simple (ACF) et partielle (PACF).
+
+:::
+
+```{r}
+plot(ur.df(electricite_ts12, type="drift", lags=0))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+L’analyse de l’ACF montre que les résidus conservent des corrélations significatives, particulièrement aux ordres 12 et 18 où les pics sortent des bornes de confiance. De son côté, la PACF ne présente qu’un seul pic marqué à l’ordre 12, ce qui introduit un biais dans l'estimation et ce qui entache la fiabilité des conclusions issues du test de Dickey-Fuller.
+
+:::
+
+## 5) Test de Dick et Fuller Augmenté
+
+::: {.interpretation-box}
+
+Afin de pallier la présence d'autocorrélation dans les erreurs du modèle de base, nous mettons en œuvre le test de Dickey-Fuller Augmenté (ADF). Cette procédure consiste à enrichir la spécification initiale du test DF en y incluant P retards de la variable dépendante différenciée
+
+:::
+
+```{r}
+T=length(electricite_ts12)
+pmax=as.integer(12*(T/100)^(0.25));library(CADFtest)
+summary(CADFtest(electricite_ts12,criterion="MAIC",type="drift",max.lag.y=pmax))
+```
+
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{equation}
+\Delta X_t = (\rho - 1)X_{t-1} + \beta_0 + \epsilon_t + \sum_{p=1}^{P} \gamma_p \Delta X_{t-p}
+\end{equation}
+
+Le critère MAIC a retenu l’ajout de 5 retards pour corriger l'autocorrélation des résidus. Nous ajoutons donc 5 variables explicatves additionelles.
+
+:::
+
+Après avoir écarté successivement les retards statistiquement non significatifs, l'examen de la Fonction d’Autocorrélation Partielle (PACF) révèle une persistance marquée au douzième retard. Compte tenu de la nature mensuelle de nos données et de cette structure saisonnière résiduelle, nous stabilisons la spécification du test en fixant le nombre de retards à 12 (lag=12). Ce choix permet de garantir l'absence d'autocorrélation et de s'assurer que le processus résiduel se comporte comme un bruit blanc. 
+
+
+
+```{r}
+summary(ur.df(electricite_ts12,type="drift",lag=12))
+```
+
+::: {.interpretation-box}
+
+De plus la pvalue de beta 0 (=0.000112) reste inférieure au seuil critique de 5%, nous pouvons ainsi garder la spécification drift. 
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \gamma_12 = 0 \\ 
+H_A : \gamma_12 \neq 0 
+\end{cases}
+
+La p-value de gamma12 est de 4.01e-05, ce qui est inférieur à 5 %. Le coefficient est donc significatif et la spécification avec dérive (drift) est validée.
+
+La statistique de test calculée est de -4.8593. En comparant cette valeur à la valeur critique de la table au seuil de 5 % (-2,88), nous constatons que la statistique est largement inférieure. Ainsi, nous rejetons l'hypothèse nulle H0 de racine unitaire. Le processus générateur de données de la série electricite_ts12 est donc stationnaire.
+
+:::
+
+## 6)Test Zivot & Andraws
+
+```{r}
+summary(ur.za(electricite_ts12,model="both",lag=12))
+
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION : 
+
+$$y_t = \beta_0 + \beta_1 t + \rho y_{t-1} + \delta_1 DU_t(T_B) + \delta_2 DT_t(T_B) + \sum_{j=1}^{p} \gamma_j \Delta y_{t-j} + \epsilon_t$$
+
+\begin{cases} 
+H_0 : \delta_1 = 0 et \delta_2=0\\ 
+H_a : \delta_1 \neq 0 et \delta_2 \neq 0 
+\end{cases}
+
+Règle de décision : p-value < 0,05, Le coefficient est statistiquement significatif, nous rejetons donc H0 au seuil de 5%. 
+
+La pvalue de $\delta_1$, associée à du, vaut 0.004234 qui est inférieure au seuil critique de 5% donc $\delta_1$  est significatif.
+La pvalue de $\delta_2$, associée à dt, vaut 0.688606  ; elle est supérieure au seuil critique de 5% donc $\delta_2$ n'est pas significatif car on accepte HO.
+$\delta_2$ n’étant pas significatif alors nous employons la spécification ”intercept”. 
+
+
+:::
+
+
+
+```{r}
+summary(ur.za(electricite_ts12,model="intercept",lag=12))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION : 
+
+$$y_t = \beta_0 + \beta_1 t + \rho y_{t-1} + \delta_1 DU_t(T_B) + + \sum_{j=1}^{p} \gamma_j \Delta y_{t-j} + \epsilon_t$$
+
+\begin{cases} 
+H_0 :  \text{ Le PGD est de type DS (Racine Unitaire) sans changement structurel.} \\ 
+H_a : \text{ Le PGD est de type TS avec une rupture structurelle} \\
+\end{cases}
+
+La p-value associée au coefficient du ($\delta_1$ ) est de 0.001624. Cette valeur étant inférieure au seuil de 5 %, le coefficient est significatif. 
+La p-value associée au coefficient du ($\gamma_1$ ) est de 0.001018 . cette valeur est inférieure au seuil critique. 
+
+\begin{cases} 
+H_0 : \rho = 1.\\
+H_a : |\rho| < 1.\\
+\end{cases}
+
+La statistique de test (Teststatistic) s'élève à (-5.8817). La valeur critique au seuil de 5 % pour ce test est de -4.80.
+Puisque la statistique calculée est inférieure à la valeur critique, nous rejetons l'hypothèse nulle H0 et le coefficient est significatif. 
+Ainsi le PGD est TS avec une unique date de rupture. 
+
+:::
+
+
+```{r}
+plot(ur.za(electricite_ts12,model="intercept",lag=12))
+```
+
+```{r}
+as.yearmon(time(electricite_ts12))[134]
+```
+
+::: {.interpretation-box}
+
+D'après le test, cette rupture est localisée à l'observation 134, ce qui correspond à février 2021. Cette date valide statistiquement la phase d'accélération massive de la demande observée après la crise de la covid19.
+
+:::
+
+## 7) Test de Lee et Strazicich
+
+
+
+Afin de confirmer la nature du processus en tenant compte de plusieurs ruptures potentielles, nous réalisons le test de Lee & Strazicich.
+
+Nous n'utiliserons pas Bootstrap car nous avons plus de 35 données. 
+
+```{r}
+setwd("/Users/gui/Desktop/M1 IREF /Econométrie L //LeeStrazicichUnitRoot-master")
+
+
+
+source("LeeStrazicichUnitRootTest.R")
+
+
+myBreaks <- 1
+myModel <- "crash"
+myLags <- 12
+myLS_test <- ur.ls(y= electricite_ts12, model = myModel, breaks = myBreaks, lags = myLags, method = "GTOS",pn = 0.1, print.results = "print" )
+```
+
+::: {.interpretation-box}
+
+**Sous l'hypothèse nulle $H_0$ (Racine unitaire) :**
+\begin{equation}
+y_t = \mu_0 + d_1 B_{1t} + d_2 B_{2t} + y_{t-1} + \nu_{1t}
+\end{equation}
+
+**Sous l'hypothèse alternative $H_a$ (Stationnarité autour d'une tendance) :**
+\begin{equation}
+y_t = \mu_1 + \gamma^* trend_t + d_1 D_{1t} + d_2 D_{2t} + \nu_{2t}
+\end{equation}
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \text{le PGD est DS avec une date de rupture} \\ 
+H_a : \text{le PGD est TS avec une de rupture} 
+\end{cases}
+
+La statistique obtenue est de -2.842686. En la comparant à la valeur critique de -3.566 (associée à lambda_1, λ≈0,1 au seuil de 5 %), nous acceptons l'hypothèse nulle de racine unitaire DS avec une date de rupture.
+
+
+
+:::
+
+```{r}
+as.yearmon(time(electricite_ts12))[21]
+```
+
+::: {.interpretation-box}
+
+L'identification de septembre 2011 comme point de rupture structurelle (indice 21) permet d'affiner la compréhension de la dynamique électrique de Singapour. Ce pivot statistique marque la fin de la période d'ajustement post-crise financière de 2008-2009 et l'ancrage de la demande dans une nouvelle trajectoire de croissance stable
+:::
+
+```{r}
+myBreaks <- 2
+myModel <- "crash"
+myLags <- 12
+myLS_test <- ur.ls(y=electricite_ts12 , model = myModel, breaks = myBreaks, lags = myLags, method = "GTOS",pn = 0.1, print.results = "print" )
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \text{Le PGD est DS avec une ou deux date de rupture } \\ 
+H_a : \text{Le PGD est TS avec une ou deux date de rupture } 
+\end{cases}
+
+Nous comparons la statistique calculée (=-3.370452) aux valeurs critiques aux points de rupture λ1 =0,1 et λ2=0,6. La statistique de test étant nettement supérieure à la valeur critique au seuil de 5 % (-5,74), nous acceptons l'hypothèse nulle de racine unitaire DS avec deux dates de rupture. 
+
+:::
+
+```{r}
+as.yearmon(time(electricite_ts12))[21]
+```
+
+```{r}
+as.yearmon(time(electricite_ts12))[116]
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+La première rupture, localisée en septembre 2011, marque la transition vers un régime de croissance stabilisé après la volatilité de la reprise post-crise de 2008, coïncidant avec le renforcement des politiques d'efficacité énergétique industrielle de la cité-État. La seconde rupture, en août 2019, cette période coïncide avec l'explosion de la demande énergétique liée à l'infrastructure numérique de Singapour. La consommation devient moins cyclique et plus "planché", sous l'impulsion du stockage de données massif.
+:::
+
+
+
+## Conclusion :
+Cette analyse démontre que la demande d'électricité à Singapour est un processus complexe qui dépasse la simple croissance linéaire. La série est régie par une dualité entre une tendance haussière structurelle, portée par le développement technologique (notamment les data centers), et une rigidité saisonnière immuable liée aux contraintes climatiques et culturelles. Le passage d'une série brute non-stationnaire à un processus stabilisé par différence saisonnière (Δ12) a permis de révéler que la consommation électrique singapourienne n'est pas erratique, mais qu'elle évolue par paliers successifs en réponse à des chocs exogènes majeurs.
+
+Analyse Spécifique : L'apport du test de Lee-Strazicich (LS)
+
+Le test de Lee-Strazicich constitue le pilier technique de ce projet car il permet de tester la présence d'une racine unitaire tout en intégrant de manière endogène jusqu'à deux ruptures structurelles. Contrairement au test de Zivot-Andrews, les résultats du test LS mènent à l'acceptation de l'hypothèse nulle (H0), confirmant que la demande électrique suit un processus de type DS (Difference Stationary) avec ruptures. Les dates identifiées — septembre 2011 (stabilisation post-crise de 2008) et août 2019 (bascule numérique pré-pandémique) — ne sont donc pas de simples fluctuations passagères. Elles marquent des changements de régime permanents, prouvant que chaque choc structurel déplace durablement le niveau de consommation de la cité-État sur une nouvelle trajectoire de croissance..
+
+
+
+## ANNEXE : 
+
+3.1) Test de spécification Trend 
+
+```{r}
+summary(ur.df(electricite_ts12, type="trend", lags=0))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+\begin{equation}
+\Delta X_t = (\rho - 1)X_{t-1} + \beta_0 + \beta_1 \text{tendance}_t + \epsilon_t
+\end{equation}
+
+\begin{cases} 
+H_0 : \rho - 1 = 0 \text{ et } \beta_1 = 0 \\
+H_a : |\rho| < 1 \text{ et } \beta_1 \neq 0 
+\end{cases} 
+
+Dans la sortie R on trouve cette valeur à l’intersection entre “tt” et “Pr(\>\|t\|)”.
+
+Règle de décision : 
+- Si p-value < 5% :on rejette, le coefficiant est significatif.  Inversement si p-value > 5% : on accepte l'hypothèse nulle, le coefficient n'est pas significatif. 
+
+La pvalue du coefficient β1 ("tt") est 0.6677, cette valeur étant supérieur au seuil de significativité de 5 %, nous acceptons l'hypothèse nulle H0 (\beta_1 \=0), le coefficient n'est pas significatif. Le processus ne peut donc pas être TS. Il reste à savoir si le processus est DS ou stationnaire, pour cela regardons la spécification drift.
+
+:::
+
+
+Retrait des retards : 
+
+
+```{r}
+summary(ur.df(electricite_ts12,type="drift",lag=5))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+Avec l'apport des 5 variables explicatives, la pvalue du coefficient β0 (=0.0109) est inférieur au seuil de 5% ainsi on rejette l'hypothèse nulle et le coefficient β0 est significatif. Ce qui valide le maintien de drift dans l'équation de test.
+
+
+
+\begin{cases} 
+H_0 : \gamma_5 = 0 \\ 
+H_A : \gamma_5 \neq 0 
+\end{cases}
+
+Règle de décision : Si le dernier retard $\gamma_p$ n'est pas significatif (p-value>10%), on le supprime et on ré-estime le modèle avec p−1 retards.Sip-value < 0,1 , le coefficient est statistiquement significatif, nous rejetons donc H0 au seuil de 10%. 
+  
+La p-value associée au 5ème retard (z.diff.lag5) est de 0,1493, soit une valeur supérieure au seuil de 10 %. Ce retard n'est donc pas statistiquement significatif. Nous procédons alors au retrait successif des retards non significatifs pour aboutir à la spécification la plus simple possible.
+
+:::
+
+```{r}
+summary(ur.df(electricite_ts12,type="drift",lag=4))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \gamma_4 = 0 \\ 
+H_A : \gamma_4 \neq 0 
+\end{cases}
+
+
+La p-value du coefficient $\gamma_4$ (z.diff.lag4) est de 0,90080. Ce résultat étant largement supérieur à 10 %, nous acceptons H0 et ôtons ce retard du modèle.
+
+:::
+
+```{r}
+summary(ur.df(electricite_ts12,type="drift",lag=3))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \gamma_3 = 0 \\ 
+H_A : \gamma_3 \neq 0 
+\end{cases}
+
+
+Le coefficient $\gamma_3$ présente une p-value de 0,34591. Comme elle est supérieure au seuil de 10 %, ce retard n'est pas conservé.
+
+:::
+
+```{r}
+summary(ur.df(electricite_ts12,type="drift",lag=2))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \gamma_2 = 0 \\ 
+H_A : \gamma_2 \neq 0 
+\end{cases}
+
+
+La p-value associée à $\gamma_2$ s'élève à 0,43676. Le coefficient n'est toujours pas statistiquement significatif au seuil de 10 %, nous l'enlevons.
+
+:::
+
+```{r}
+summary(ur.df(electricite_ts12,type="drift",lag=1))
+```
+
+::: {.interpretation-box}
+
+INTERPRETATION :
+
+\begin{cases} 
+H_0 : \gamma_1 = 0 \\ 
+H_A : \gamma_1 \neq 0 
+\end{cases}
+
+Pour le premier retard, la p-value est de 0,25673 , on accepte H0. Elle reste supérieure au seuil critique. 
+:::
+
+
